@@ -44,7 +44,7 @@ def random_walk(maze, start, n_steps):
     positions = ...
 
     # perform random steps...
-    TODO...
+    # TODO...
 
     # return a list of length n_steps + 1, containing the starting position and all subsequent locations as e.g. tuples or size (2) arrays 
     return positions
@@ -72,7 +72,7 @@ def learn_from_traj(succ_repr, trajectory, gamma=0.98, alpha=0.02):
     # Write a function to update a given successor representation (for the state at which the trajectory starts) using an example trajectory
     # using discount factor gamma and learning rate alpha
 
-    TODO...
+    # TODO...
 
     # return the updated successor representation
     return succ_repr
@@ -106,16 +106,16 @@ def compute_transition_matrix(maze):
     # (you will need to think of a good way to map any 2D grid coordinates onto a single number for this)
 
     # create a matrix over all state pairs
-    transitions = np.zeros(TODO...)
+    # transitions = np.zeros(TODO...)
 
     # iterate over all states, filling in the transition probabilities to all other states on the next step (only one step into the future)
-    TODO...
+    # TODO...
     
     # normalize transitions if neccessary
-    TODO...
+    # TODO...
 
     # remove NaNs if necessary
-    TODO...
+    # TODO...
 
     return transitions
 
@@ -129,16 +129,17 @@ def compute_sr(transitions, i, j, gamma=0.98):
     # given a transition matrix and a specific state (i, j), compute the successor representation of that state with discount factor gamma
 
     # initialize things (better to represent the current discounted occupancy as a vector here)
-    current_discounted_occupancy = np.zeros(TODO...)
-    total = current_discounted_occupancy.copy()
-    TODO...
+    # current_discounted_occupancy = np.zeros(TODO...)
+    # total = current_discounted_occupancy.copy()
+    # TODO...
 
     # iterate for a number of steps
-    for _ in range(340):
-        TODO...
+    # for _ in range(340):
+        # TODO...
 
     # return the successor representation, maybe reshape your vector into the maze shape now
-    return total.reshape(TODO...)
+    # return total.reshape(TODO...)
+    pass
 
 transitions = compute_transition_matrix(maze)
 
