@@ -1,0 +1,14 @@
+name: pygame
+channels:
+  - conda-forge
+dependencies:
+  - python
+  - jupyter
+  - pip
+  - pip:
+      - pandas
+      - numpy
+      - scipy
+      - matplotlib
+      - seaborn
+      - pygame
