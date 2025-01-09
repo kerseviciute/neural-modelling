@@ -4,6 +4,7 @@ import random
 import math
 import numpy as np
 import matplotlib.pyplot as plt
+import datetime
 
 
 # Game parameters
@@ -63,8 +64,8 @@ gradual_step = 0
 gradual_attempts = 1
 perturbation_rand = random.uniform(-math.pi / 4, +math.pi / 4)
 
-error_angles = []  # List to store error angles
-
+error_angle_logs = np.zeros(ATTEMPTS_LIMIT)  # List to store error angles
+move_faster_logs = np.zeros(ATTEMPTS_LIMIT)
 # Flag for showing mouse position and deltas
 show_mouse_info = False
 
@@ -104,6 +105,27 @@ def at_start_position_and_generate_target(mouse_pos):
     return False
 
 
+def get_delta_angle(reference: np.array, other: np.array) -> float:
+    """get delta angle between two 2D positions
+
+    Args:
+        reference (np.array): 
+        other (np.array): _description_
+
+    Returns:
+        float: _description_
+    """
+    dx, dy = reference - other
+    angle = math.atan2(dy, dx)  # Returns angle in radians
+    return angle
+
+def get_file_name(prefix: str = "logs"):
+    dt = datetime.datetime.now()
+    date = str(dt.date())
+    time = str(dt.time()).split(".")[0].replace(":", "-")
+    return prefix + "_" + date.replace("-", "_") + "_" + time.replace("-", "_")
+
+
 # Main game loop
 running = True
 while running:
@@ -126,7 +148,7 @@ while running:
     # Design experiment
     if attempts == 1:
         perturbation_mode = False
-    elif attempts == 2:
+    elif attempts == 40:
         perturbation_mode = True
         perturbation_type = "gradual"
     elif attempts == 80:
@@ -161,7 +183,7 @@ while running:
         elif perturbation_type == "gradual":
             # gradual counterclockwise perturbation of perturbation_angle in 10 steps, with perturbation_angle/10, each step lasts 3 attempts
             perturbed_mouse_angle = np.deg2rad(((gradual_attempts // 3) + 1) * np.rad2deg(perturbation_angle) / 10)
-        # TODO:
+        
         rot_mat = np.array([[np.cos(perturbed_mouse_angle), -np.sin(perturbed_mouse_angle)],
                             [np.sin(perturbed_mouse_angle), np.cos(perturbed_mouse_angle)]])
         perturbed_mouse_pos = rot_mat @ (np.array(mouse_pos) - START_POSITION) + START_POSITION 
@@ -176,8 +198,10 @@ while running:
         attempts += 1
 
         # CALCULATE AND SAVE ERRORS between target and circle end position for a hit
-        error_angle = float("NaN")
-        error_angles.append(error_angle)
+        new_target = np.array(new_target) - np.array(START_POSITION)
+        circle_pos = np.array(circle_pos) - np.array(START_POSITION)
+        error_angle = get_delta_angle(new_target, circle_pos).item()
+        error_angle_logs[attempts](error_angle)
 
         new_target = None  # Set target to None to indicate hit
         start_time = 0  # Reset start_time after hitting the target
@@ -195,8 +219,10 @@ while running:
         attempts += 1
 
         # CALCULATE AND SAVE ERRORS between target and circle end position for a miss
-        error_angle = float("NaN")
-        error_angles.append(error_angle)
+        new_target = np.array(new_target) - np.array(START_POSITION)
+        circle_pos = np.array(circle_pos) - np.array(START_POSITION)
+        error_angle = get_delta_angle(new_target, circle_pos).item()
+        error_angle_logs[attempts](error_angle)
 
         new_target = None  # Set target to None to indicate miss
         start_time = 0  # Reset start_time after missing the target
@@ -215,6 +241,7 @@ while running:
     if start_time != 0 and (current_time - start_time) > TIME_LIMIT:
         move_faster = True
         start_time = 0  # Reset start_time
+        move_faster_logs[attempts] = 1
 
     # Show 'MOVE FASTER!'
     if move_faster:
@@ -271,6 +298,7 @@ while running:
 # Quit Pygame
 pygame.quit()
 
-## TASK 2, CALCULATE, PLOT AND SAVE (e.g. export as .csv) ERRORS from error_angles
 
+## TASK 2, CALCULATE, PLOT AND SAVE (e.g. export as .csv) ERRORS from error_angles
+np.save(get_file_name(), {"move_faster_logs": move_faster_logs, "error_angle_logs": error_angle_logs    })
 sys.exit()
