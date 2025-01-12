@@ -66,6 +66,7 @@ perturbation_rand = random.uniform(-math.pi / 4, +math.pi / 4)
 
 error_angle_logs = np.zeros(ATTEMPTS_LIMIT)  # List to store error angles
 move_faster_logs = np.zeros(ATTEMPTS_LIMIT)
+time_logs = np.zeros(ATTEMPTS_LIMIT)
 # Flag for showing mouse position and deltas
 show_mouse_info = False
 
@@ -202,6 +203,8 @@ while running:
         circle_pos = np.array(circle_pos) - np.array(START_POSITION)
         error_angle = get_delta_angle(new_target, circle_pos)
         error_angle_logs[attempts - 1] = error_angle
+        current_time = pygame.time.get_ticks()
+        time_logs[attempts - 1] = current_time - start_time
 
         new_target = None  # Set target to None to indicate hit
         start_time = 0  # Reset start_time after hitting the target
@@ -223,6 +226,9 @@ while running:
         circle_pos = np.array(circle_pos) - np.array(START_POSITION)
         error_angle = get_delta_angle(new_target, circle_pos)
         error_angle_logs[attempts - 1] = error_angle
+        current_time = pygame.time.get_ticks()
+        time_logs[attempts - 1] = current_time - start_time
+
 
         new_target = None  # Set target to None to indicate miss
         start_time = 0  # Reset start_time after missing the target
@@ -300,5 +306,5 @@ pygame.quit()
 
 
 ## TASK 2, CALCULATE, PLOT AND SAVE (e.g. export as .csv) ERRORS from error_angles
-np.save(get_file_name(), {"move_faster_logs": move_faster_logs, "error_angle_logs": error_angle_logs    })
+np.save(get_file_name(), {"move_faster_logs": move_faster_logs, "error_angle_logs": error_angle_logs, "time_logs": time_logs})
 sys.exit()
