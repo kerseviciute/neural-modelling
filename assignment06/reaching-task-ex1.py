@@ -200,8 +200,8 @@ while running:
         # CALCULATE AND SAVE ERRORS between target and circle end position for a hit
         new_target = np.array(new_target) - np.array(START_POSITION)
         circle_pos = np.array(circle_pos) - np.array(START_POSITION)
-        error_angle = get_delta_angle(new_target, circle_pos).item()
-        error_angle_logs[attempts](error_angle)
+        error_angle = get_delta_angle(new_target, circle_pos)
+        error_angle_logs[attempts - 1] = error_angle
 
         new_target = None  # Set target to None to indicate hit
         start_time = 0  # Reset start_time after hitting the target
@@ -221,8 +221,8 @@ while running:
         # CALCULATE AND SAVE ERRORS between target and circle end position for a miss
         new_target = np.array(new_target) - np.array(START_POSITION)
         circle_pos = np.array(circle_pos) - np.array(START_POSITION)
-        error_angle = get_delta_angle(new_target, circle_pos).item()
-        error_angle_logs[attempts](error_angle)
+        error_angle = get_delta_angle(new_target, circle_pos)
+        error_angle_logs[attempts - 1] = error_angle
 
         new_target = None  # Set target to None to indicate miss
         start_time = 0  # Reset start_time after missing the target
