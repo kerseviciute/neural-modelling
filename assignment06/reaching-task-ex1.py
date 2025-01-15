@@ -17,7 +17,7 @@ CIRCLE_SIZE = 20
 TARGET_SIZE = CIRCLE_SIZE
 TARGET_RADIUS = 300
 MASK_RADIUS = 0.66 * TARGET_RADIUS
-ATTEMPTS_LIMIT = 320
+ATTEMPTS_LIMIT = 360
 START_POSITION = (WIDTH // 2, HEIGHT // 2)
 START_ANGLE = 0
 PERTURBATION_ANGLE = 30
@@ -67,6 +67,9 @@ perturbation_rand = random.uniform(-math.pi / 4, +math.pi / 4)
 error_angle_logs = np.zeros(ATTEMPTS_LIMIT)  # List to store error angles
 move_faster_logs = np.zeros(ATTEMPTS_LIMIT)
 time_logs = np.zeros(ATTEMPTS_LIMIT)
+mouse_pos_logs = []
+circle_pos_logs = []
+attempt_logs = []
 # Flag for showing mouse position and deltas
 show_mouse_info = False
 
@@ -110,7 +113,7 @@ def get_delta_angle(reference: np.array, other: np.array) -> float:
     """get delta angle between two 2D positions
 
     Args:
-        reference (np.array): 
+        reference (np.array):
         other (np.array): _description_
 
     Returns:
@@ -119,6 +122,7 @@ def get_delta_angle(reference: np.array, other: np.array) -> float:
     dx, dy = reference - other
     angle = math.atan2(dy, dx)  # Returns angle in radians
     return angle
+
 
 def get_file_name(prefix: str = "logs"):
     dt = datetime.datetime.now()
@@ -158,14 +162,16 @@ while running:
         perturbation_mode = True
         perturbation_type = "sudden"
     elif attempts == 160:
+        perturbation_mode = False
+    elif attempts == 200:
         perturbation_mode = True
         perturbation_type = "gradual_reversed"
-    elif attempts == 200:
-        perturbation_mode = False
     elif attempts == 240:
+        perturbation_mode = False
+    elif attempts == 280:
         perturbation_mode = True
         perturbation_type = "sudden_reversed"
-    elif attempts == 280:
+    elif attempts == 320:
         perturbation_mode = False
     elif attempts >= ATTEMPTS_LIMIT:
         running = False
@@ -174,13 +180,13 @@ while running:
     pygame.mouse.set_visible(False)
     # Get mouse position
     mouse_pos = pygame.mouse.get_pos()
-    
+
     # Calculate distance from START_POSITION to mouse_pos
     deltax = mouse_pos[0] - START_POSITION[0]
     deltay = mouse_pos[1] - START_POSITION[1]
     distance = math.hypot(deltax, deltay)
     mouse_angle = math.atan2(deltay, deltax)
-    
+
     # TASK1: CALCULATE perturbed_mouse_pos
     # PRESS 'h' in game for a hint
     if perturbation_mode:
@@ -191,8 +197,10 @@ while running:
 
         elif perturbation_type == "gradual":
             # gradual counterclockwise perturbation of perturbation_angle in 10 steps, with perturbation_angle/10, each step lasts 3 attempts
-            perturbed_mouse_angle = np.deg2rad(((gradual_attempts // 3) + 1) * np.rad2deg(perturbation_angle) / 10)
-        
+            perturbed_mouse_angle = np.deg2rad(
+                ((gradual_attempts // 3) + 1) * np.rad2deg(perturbation_angle) / 10
+            )
+
         if perturbation_type == "sudden_reversed":
             # sudden clockwise perturbation of perturbation_angle
             # 30 degree
@@ -200,16 +208,28 @@ while running:
 
         elif perturbation_type == "gradual_reversed":
             # gradual counterclockwise perturbation of perturbation_angle in 10 steps, with perturbation_angle/10, each step lasts 3 attempts
-            perturbed_mouse_angle = -np.deg2rad(((gradual_attempts // 3) + 1) * np.rad2deg(perturbation_angle) / 10)
-        
-        
-        rot_mat = np.array([[np.cos(perturbed_mouse_angle), -np.sin(perturbed_mouse_angle)],
-                            [np.sin(perturbed_mouse_angle), np.cos(perturbed_mouse_angle)]])
-        perturbed_mouse_pos = rot_mat @ (np.array(mouse_pos) - START_POSITION) + START_POSITION 
+            perturbed_mouse_angle = -np.deg2rad(
+                ((gradual_attempts // 3) + 1) * np.rad2deg(perturbation_angle) / 10
+            )
+
+        rot_mat = np.array(
+            [
+                [np.cos(perturbed_mouse_angle), -np.sin(perturbed_mouse_angle)],
+                [np.sin(perturbed_mouse_angle), np.cos(perturbed_mouse_angle)],
+            ]
+        )
+        perturbed_mouse_pos = (
+            rot_mat @ (np.array(mouse_pos) - START_POSITION) + START_POSITION
+        )
         circle_pos = perturbed_mouse_pos.tolist()
     else:
         circle_pos = pygame.mouse.get_pos()
-    
+
+    # log dynamics
+    attempt_logs.append(attempts)
+    mouse_pos_logs.append(mouse_pos)
+    circle_pos_logs.append(circle_pos)
+
     # Check if target is hit or missed
     # hit if circle touches target's center
     if check_target_reached():
@@ -246,7 +266,6 @@ while running:
         error_angle_logs[attempts - 1] = error_angle
         current_time = pygame.time.get_ticks()
         time_logs[attempts - 1] = current_time - start_time
-
 
         new_target = None  # Set target to None to indicate miss
         start_time = 0  # Reset start_time after missing the target
@@ -307,7 +326,7 @@ while running:
         mouse_angle_text = font.render(
             f"Mouse_Ang: {np.rint(np.degrees(mouse_angle))}", True, WHITE
         )
-        pertubation_mode_text =  font.render(
+        pertubation_mode_text = font.render(
             f"Pertubation_mode: {perturbation_mode}, {perturbation_type}", True, WHITE
         )
         screen.blit(mouse_info_text, (10, 60))
@@ -324,5 +343,15 @@ pygame.quit()
 
 
 ## TASK 2, CALCULATE, PLOT AND SAVE (e.g. export as .csv) ERRORS from error_angles
-np.save(get_file_name(), {"move_faster_logs": move_faster_logs, "error_angle_logs": error_angle_logs, "time_logs": time_logs})
+np.save(
+    get_file_name(),
+    {
+        "move_faster_logs": move_faster_logs,
+        "error_angle_logs": error_angle_logs,
+        "time_logs": time_logs,
+        "attempt_logs": np.array(attempt_logs),
+        "mouse_pos_logs": np.array(mouse_pos_logs) - np.array(START_POSITION),
+        "circle_pos_logs": np.array(circle_pos_logs) - np.array(START_POSITION),
+    },
+)
 sys.exit()
