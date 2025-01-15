@@ -17,7 +17,7 @@ CIRCLE_SIZE = 20
 TARGET_SIZE = CIRCLE_SIZE
 TARGET_RADIUS = 300
 MASK_RADIUS = 0.66 * TARGET_RADIUS
-ATTEMPTS_LIMIT = 200
+ATTEMPTS_LIMIT = 320
 START_POSITION = (WIDTH // 2, HEIGHT // 2)
 START_ANGLE = 0
 PERTURBATION_ANGLE = 30
@@ -158,6 +158,14 @@ while running:
         perturbation_mode = True
         perturbation_type = "sudden"
     elif attempts == 160:
+        perturbation_mode = True
+        perturbation_type = "gradual_reversed"
+    elif attempts == 200:
+        perturbation_mode = False
+    elif attempts == 240:
+        perturbation_mode = True
+        perturbation_type = "sudden_reversed"
+    elif attempts == 280:
         perturbation_mode = False
     elif attempts >= ATTEMPTS_LIMIT:
         running = False
@@ -184,6 +192,16 @@ while running:
         elif perturbation_type == "gradual":
             # gradual counterclockwise perturbation of perturbation_angle in 10 steps, with perturbation_angle/10, each step lasts 3 attempts
             perturbed_mouse_angle = np.deg2rad(((gradual_attempts // 3) + 1) * np.rad2deg(perturbation_angle) / 10)
+        
+        if perturbation_type == "sudden_reversed":
+            # sudden clockwise perturbation of perturbation_angle
+            # 30 degree
+            perturbed_mouse_angle = -perturbation_angle
+
+        elif perturbation_type == "gradual_reversed":
+            # gradual counterclockwise perturbation of perturbation_angle in 10 steps, with perturbation_angle/10, each step lasts 3 attempts
+            perturbed_mouse_angle = -np.deg2rad(((gradual_attempts // 3) + 1) * np.rad2deg(perturbation_angle) / 10)
+        
         
         rot_mat = np.array([[np.cos(perturbed_mouse_angle), -np.sin(perturbed_mouse_angle)],
                             [np.sin(perturbed_mouse_angle), np.cos(perturbed_mouse_angle)]])
