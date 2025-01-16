@@ -50,7 +50,7 @@ move_faster = False
 clock = pygame.time.Clock()
 
 # Initialize game modes
-mask_mode = True
+mask_mode = False
 target_mode = "fix"  # Mode for angular shift of target: random, fix, dynamic
 perturbation_mode = False
 perturbation_type = (
@@ -113,14 +113,15 @@ def get_delta_angle(reference: np.array, other: np.array) -> float:
     """get delta angle between two 2D positions
 
     Args:
-        reference (np.array):
-        other (np.array): _description_
+        reference (np.array): (x, y)
+        other (np.array): (x, y)
 
     Returns:
         float: _description_
     """
-    dx, dy = reference - other
-    angle = math.atan2(dy, dx)  # Returns angle in radians
+    reference_angle = np.arctan2(*reference[::-1])
+    other_angle = np.arctan2(*other[::-1])
+    angle = other_angle - reference_angle
     return angle
 
 
@@ -153,9 +154,9 @@ while running:
     # Design experiment
     if attempts == 1:
         perturbation_mode = False
-    elif attempts == 40:
+    elif attempts == 2:
         perturbation_mode = True
-        perturbation_type = "gradual"
+        perturbation_type = "gradual_reversed"
     elif attempts == 80:
         perturbation_mode = False
     elif attempts == 120:
@@ -239,7 +240,7 @@ while running:
         # CALCULATE AND SAVE ERRORS between target and circle end position for a hit
         new_target = np.array(new_target) - np.array(START_POSITION)
         circle_pos = np.array(circle_pos) - np.array(START_POSITION)
-        error_angle = get_delta_angle(new_target, circle_pos)
+        error_angle = np.rad2deg(get_delta_angle(new_target, circle_pos))
         error_angle_logs[attempts - 1] = error_angle
         current_time = pygame.time.get_ticks()
         time_logs[attempts - 1] = current_time - start_time
@@ -262,7 +263,7 @@ while running:
         # CALCULATE AND SAVE ERRORS between target and circle end position for a miss
         new_target = np.array(new_target) - np.array(START_POSITION)
         circle_pos = np.array(circle_pos) - np.array(START_POSITION)
-        error_angle = get_delta_angle(new_target, circle_pos)
+        error_angle = np.rad2deg(get_delta_angle(new_target, circle_pos))
         error_angle_logs[attempts - 1] = error_angle
         current_time = pygame.time.get_ticks()
         time_logs[attempts - 1] = current_time - start_time
