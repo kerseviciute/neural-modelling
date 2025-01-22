@@ -17,7 +17,6 @@ CIRCLE_SIZE = 20
 TARGET_SIZE = CIRCLE_SIZE
 TARGET_RADIUS = 300
 MASK_RADIUS = 0.66 * TARGET_RADIUS
-ATTEMPTS_LIMIT = 320
 START_POSITION = (WIDTH // 2, HEIGHT // 2)
 START_ANGLE = 30
 
@@ -47,6 +46,18 @@ score = 0
 attempts = 0
 new_target = None
 start_time = 0
+
+# Setup for blocks
+n_perturbation = 60
+n_no_perturbation = 20
+block_len = n_no_perturbation + n_perturbation + n_no_perturbation
+
+block1_start = 0
+block2_start = block_len
+block3_start = block_len * 2
+block4_start = block_len * 3
+
+ATTEMPTS_LIMIT = block_len * 4
 
 new_target = None
 start_target = math.radians(START_ANGLE)
@@ -162,48 +173,48 @@ while running:
     #   - 60 attempts with perturbation
     #   - 20 attempts without perturbation
 
-    # Block 1: target at 30 degrees
-    if attempts == 0:
+    # Block 1
+    if attempts == block1_start:
         START_ANGLE = TARGET_ANGLES[0]
         start_target = math.radians(START_ANGLE)
         perturbation_mode = False
-    elif attempts == 2:
+    elif attempts == block1_start + n_no_perturbation:
         perturbation_mode = True
         perturbation_type = "sudden"
-    elif attempts == 8:
+    elif attempts == block1_start + n_no_perturbation + n_perturbation:
         perturbation_mode = False
 
-    # Block 2: target at 72 degrees
-    elif attempts == 10:
+    # Block 2
+    elif attempts == block2_start:
         START_ANGLE = TARGET_ANGLES[1]
         start_target = math.radians(START_ANGLE)
         perturbation_mode = False
-    elif attempts == 12:
+    elif attempts == block2_start + n_no_perturbation:
         perturbation_mode = True
         perturbation_type = "sudden"
-    elif attempts == 18:
+    elif attempts == block2_start + n_no_perturbation + n_perturbation:
         perturbation_mode = False
 
-    # Block 3: target in between 30 and 72 degrees
-    elif attempts == 20:
+    # Block 3
+    elif attempts == block3_start:
         START_ANGLE = TARGET_ANGLES[2]
         start_target = math.radians(START_ANGLE)
         perturbation_mode = False
-    elif attempts == 22:
+    elif attempts == block3_start + n_no_perturbation:
         perturbation_mode = True
         perturbation_type = "sudden"
-    elif attempts == 28:
+    elif attempts == block3_start + n_no_perturbation + n_perturbation:
         perturbation_mode = False
 
-    # Block 4: target at 97 degrees
-    elif attempts == 30:
+    # Block 4
+    elif attempts == block4_start:
         START_ANGLE = TARGET_ANGLES[3]
         start_target = math.radians(START_ANGLE)
         perturbation_mode = False
-    elif attempts == 32:
+    elif attempts == block4_start + n_no_perturbation:
         perturbation_mode = True
         perturbation_type = "sudden"
-    elif attempts == 38:
+    elif attempts == block4_start + n_no_perturbation + n_perturbation:
         perturbation_mode = False
 
     # End
