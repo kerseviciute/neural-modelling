@@ -50,7 +50,7 @@ move_faster = False
 clock = pygame.time.Clock()
 
 # Initialize game modes
-mask_mode = False
+mask_mode = True
 target_mode = "fix"  # Mode for angular shift of target: random, fix, dynamic
 perturbation_mode = False
 perturbation_type = (
