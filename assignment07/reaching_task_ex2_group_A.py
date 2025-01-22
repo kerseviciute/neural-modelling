@@ -22,7 +22,7 @@ START_POSITION = (WIDTH // 2, HEIGHT // 2)
 START_ANGLE = 30
 
 # List the target starting angles here
-TARGET_ANGLES = [ 92, 30, (92 + 30) / 2, 165 ]
+TARGET_ANGLES = [-15, -75, (-75 - 15) / 2, -120]
 
 PERTURBATION_ANGLE = 30
 TIME_LIMIT = 1000  # time limit in ms
