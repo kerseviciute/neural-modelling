@@ -197,9 +197,11 @@ while running:
             perturbed_mouse_angle = perturbation_angle
 
         elif perturbation_type == "gradual":
-            # gradual counterclockwise perturbation of perturbation_angle in 10 steps, with perturbation_angle/10, each step lasts 3 attempts
+            # gradual counter-clockwise perturbation of perturbation_angle in 10 steps
+            # with perturbation_angle / 10, each step lasts 3 attempts
+            gradual_count = np.min([(gradual_attempts // 3) + 1, 10])
             perturbed_mouse_angle = np.deg2rad(
-                ((gradual_attempts // 3) + 1) * np.rad2deg(perturbation_angle) / 10
+                gradual_count * np.rad2deg(perturbation_angle / 10)
             )
 
         if perturbation_type == "sudden_reversed":
@@ -208,9 +210,11 @@ while running:
             perturbed_mouse_angle = -perturbation_angle
 
         elif perturbation_type == "gradual_reversed":
-            # gradual counterclockwise perturbation of perturbation_angle in 10 steps, with perturbation_angle/10, each step lasts 3 attempts
+            # gradual clockwise perturbation of perturbation_angle in 10 steps,
+            # with perturbation_angle / 10, each step lasts 3 attempts
+            gradual_count = np.min([(gradual_attempts // 3) + 1, 10])
             perturbed_mouse_angle = -np.deg2rad(
-                ((gradual_attempts // 3) + 1) * np.rad2deg(perturbation_angle) / 10
+                gradual_count * np.rad2deg(perturbation_angle / 10)
             )
 
         rot_mat = np.array(
