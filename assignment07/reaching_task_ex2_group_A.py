@@ -220,7 +220,7 @@ while running:
 
     # Block 5: repeat block 4 with perturbation angle in the opposite direction
     if attempts == block5_start:
-        START_ANGLE = TARGET_ANGLES[0]
+        START_ANGLE = TARGET_ANGLES[3]
         start_target = math.radians(START_ANGLE)
         perturbation_mode = False
     elif attempts == block5_start + n_no_perturbation:
