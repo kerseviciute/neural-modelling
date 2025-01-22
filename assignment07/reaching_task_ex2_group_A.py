@@ -19,7 +19,11 @@ TARGET_RADIUS = 300
 MASK_RADIUS = 0.66 * TARGET_RADIUS
 ATTEMPTS_LIMIT = 320
 START_POSITION = (WIDTH // 2, HEIGHT // 2)
-START_ANGLE = 0
+START_ANGLE = 30
+
+# List the target starting angles here
+TARGET_ANGLES = [ 92, 30, (92 + 30) / 2, 165 ]
+
 PERTURBATION_ANGLE = 30
 TIME_LIMIT = 1000  # time limit in ms
 
@@ -152,28 +156,57 @@ while running:
                 show_mouse_info = not show_mouse_info
 
     # Design experiment
-    if attempts == 1:
+
+    # A single block:
+    #   - 20 attempts without perturbation
+    #   - 60 attempts with perturbation
+    #   - 20 attempts without perturbation
+
+    # Block 1: target at 30 degrees
+    if attempts == 0:
+        START_ANGLE = TARGET_ANGLES[0]
+        start_target = math.radians(START_ANGLE)
         perturbation_mode = False
+    elif attempts == 2:
+        perturbation_mode = True
+        perturbation_type = "sudden"
+    elif attempts == 8:
+        perturbation_mode = False
+
+    # Block 2: target at 72 degrees
+    elif attempts == 10:
+        START_ANGLE = TARGET_ANGLES[1]
+        start_target = math.radians(START_ANGLE)
+        perturbation_mode = False
+    elif attempts == 12:
+        perturbation_mode = True
+        perturbation_type = "sudden"
+    elif attempts == 18:
+        perturbation_mode = False
+
+    # Block 3: target in between 30 and 72 degrees
     elif attempts == 20:
-        perturbation_mode = True
-        perturbation_type = "sudden0"
-    elif attempts == 80:
+        START_ANGLE = TARGET_ANGLES[2]
+        start_target = math.radians(START_ANGLE)
         perturbation_mode = False
-    elif attempts == 100:
+    elif attempts == 22:
         perturbation_mode = True
-        perturbation_type = "sudden1"
-    elif attempts == 160:
+        perturbation_type = "sudden"
+    elif attempts == 28:
         perturbation_mode = False
-    elif attempts == 180:
+
+    # Block 4: target at 97 degrees
+    elif attempts == 30:
+        START_ANGLE = TARGET_ANGLES[3]
+        start_target = math.radians(START_ANGLE)
+        perturbation_mode = False
+    elif attempts == 32:
         perturbation_mode = True
-        perturbation_type = "sudden2"
-    elif attempts == 240:
+        perturbation_type = "sudden"
+    elif attempts == 38:
         perturbation_mode = False
-    elif attempts == 260:
-        perturbation_mode = True
-        perturbation_type = "sudden3"
-    elif attempts == 320:
-        perturbation_mode = False
+
+    # End
     elif attempts >= ATTEMPTS_LIMIT:
         running = False
 
@@ -192,37 +225,12 @@ while running:
     # PRESS 'h' in game for a hint
     if perturbation_mode:
         if perturbation_type == "sudden":
-            # sudden clockwise perturbation of perturbation_angle
-            # 30 degree
             perturbed_mouse_angle = perturbation_angle
 
-        elif perturbation_type == "gradual":
-            # gradual counter-clockwise perturbation of perturbation_angle in 10 steps
-            # with perturbation_angle / 10, each step lasts 3 attempts
-            gradual_count = np.min([(gradual_attempts // 3) + 1, 10])
-            perturbed_mouse_angle = np.deg2rad(
-                gradual_count * np.rad2deg(perturbation_angle / 10)
-            )
-
-        if perturbation_type == "sudden_reversed":
-            # sudden clockwise perturbation of perturbation_angle
-            # 30 degree
-            perturbed_mouse_angle = -perturbation_angle
-
-        elif perturbation_type == "gradual_reversed":
-            # gradual clockwise perturbation of perturbation_angle in 10 steps,
-            # with perturbation_angle / 10, each step lasts 3 attempts
-            gradual_count = np.min([(gradual_attempts // 3) + 1, 10])
-            perturbed_mouse_angle = -np.deg2rad(
-                gradual_count * np.rad2deg(perturbation_angle / 10)
-            )
-
-        rot_mat = np.array(
-            [
-                [np.cos(perturbed_mouse_angle), -np.sin(perturbed_mouse_angle)],
-                [np.sin(perturbed_mouse_angle), np.cos(perturbed_mouse_angle)],
-            ]
-        )
+        rot_mat = np.array([
+            [np.cos(perturbed_mouse_angle), -np.sin(perturbed_mouse_angle)],
+            [np.sin(perturbed_mouse_angle), np.cos(perturbed_mouse_angle)],
+        ])
         perturbed_mouse_pos = (
             rot_mat @ (np.array(mouse_pos) - START_POSITION) + START_POSITION
         )
@@ -334,10 +342,14 @@ while running:
         pertubation_mode_text = font.render(
             f"Pertubation_mode: {perturbation_mode}, {perturbation_type}", True, WHITE
         )
+        target_position_text = font.render(
+            f"Target position: {START_ANGLE}", True, WHITE
+        )
         screen.blit(mouse_info_text, (10, 60))
         screen.blit(delta_info_text, (10, 90))
         screen.blit(mouse_angle_text, (10, 120))
         screen.blit(pertubation_mode_text, (10, 150))
+        screen.blit(target_position_text, (10, 180))
 
     # Update display
     pygame.display.flip()
