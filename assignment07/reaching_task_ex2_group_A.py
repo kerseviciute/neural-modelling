@@ -56,8 +56,9 @@ block1_start = 0
 block2_start = block_len
 block3_start = block_len * 2
 block4_start = block_len * 3
+block5_start = block_len * 4
 
-ATTEMPTS_LIMIT = block_len * 4
+ATTEMPTS_LIMIT = block_len * 5
 
 new_target = None
 start_target = math.radians(START_ANGLE)
@@ -215,6 +216,19 @@ while running:
         perturbation_mode = True
         perturbation_type = "sudden"
     elif attempts == block4_start + n_no_perturbation + n_perturbation:
+        perturbation_mode = False
+
+    # Block 5: repeat block 4 with perturbation angle in the opposite direction
+    if attempts == block5_start:
+        START_ANGLE = TARGET_ANGLES[0]
+        start_target = math.radians(START_ANGLE)
+        perturbation_mode = False
+    elif attempts == block5_start + n_no_perturbation:
+        # Reverse perturbation angle
+        perturbation_angle = -perturbation_angle
+        perturbation_mode = True
+        perturbation_type = "sudden"
+    elif attempts == block5_start + n_no_perturbation + n_perturbation:
         perturbation_mode = False
 
     # End
