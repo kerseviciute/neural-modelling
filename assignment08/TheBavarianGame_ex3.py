@@ -77,6 +77,10 @@ show_info=0
 trial_positions = []
 last_trajectory=[]
 
+previous_win = False
+previous_pos = None
+previous_trajectory = []
+
 # Font setup
 font = pygame.font.SysFont(None, 36)
 
@@ -140,6 +144,7 @@ def handle_mouse_input():
             apply_perturbation()
         launched = True
 
+
 def calculate_velocity(start_pos, mouse_pos):
     dx = mouse_pos[0] - start_pos[0]
     dy = mouse_pos[1] - start_pos[1]
@@ -147,10 +152,12 @@ def calculate_velocity(start_pos, mouse_pos):
     angle = math.atan2(dy, dx)
     return [speed * math.cos(angle), speed * math.sin(angle)]
 
+
 def apply_friction():
     global pint_velocity
     pint_velocity[0] *= friction
     pint_velocity[1] *= friction
+
 
 def update_perturbation():
     """Adjust the perturbation force based on gradual or sudden mode."""
@@ -166,6 +173,7 @@ def apply_perturbation():
     """Apply perturbation to the pint's movement."""
     if perturbation_active:
         pint_velocity[0] += perturbation_force  # Add rightward force
+
 
 # CHECK & SCORE
 def check_stopped():
@@ -193,9 +201,11 @@ def point_in_polygon(point, polygon):
         px, py = sx, sy
     return inside
 
+
 def calculate_score():
     """Calculate and update the score."""
-    global pint_pos, stopped, end_pos, score, trial_counter, trial_positions
+    global pint_pos, stopped, end_pos, score, trial_counter, trial_positions, previous_win, previous_pos, previous_trajectory
+    last_trajectory.append(pint_pos.copy())
     if stopped:  # Only calculate score once per trial
         if point_in_polygon(pint_pos, GREEN_TRIANGLE):
             reference_point = SCORING_RECT.topleft
@@ -210,13 +220,16 @@ def calculate_score():
         elif not TABLE_RECT.collidepoint(*pint_pos):
             score -= 50  # Penalty for missing
             display_message("Too far!")
+
+        previous_win = point_in_polygon(pint_pos, GREEN_TRIANGLE)
+        previous_pos = pint_pos.copy()
+        previous_trajectory = last_trajectory.copy()
         
         # Append trial position and current block number
         trial_positions.append((pint_pos[0], pint_pos[1], current_block))
         reset_pint()
         handle_trial_end()
-        
-        
+
 
 def calculate_edge_score(distance, max_distance):
     """
@@ -226,11 +239,13 @@ def calculate_edge_score(distance, max_distance):
     normalized_distance = min(distance / max_distance, 1.0)  # Normalize to [0, 1]
     return int(100 - 90 * normalized_distance)  # Scale between 100 and 10
 
+
 def display_message(text):
     message = font.render(text, True, BLACK)
     screen.blit(message, (SCREEN_WIDTH // 2 - message.get_width() // 2, SCREEN_HEIGHT // 2 - message.get_height() // 2))
     pygame.display.flip()
     pygame.time.delay(1000)
+
 
 def reset_pint():
     """Reset the pint to the starting position."""
@@ -247,6 +262,32 @@ def reset_pint():
 
 def draw_feedback():
     """Display feedback based on the feedback type."""
+
+    global feedback_type
+    print(feedback_type)
+
+    # Reset
+    pygame.draw.circle(screen, BLACK, START_POS, FREE_ZONE_RADIUS, 3)
+
+    if feedback_type is None:
+        return
+
+    if feedback_type == "trajectory":
+        # Draw the trajectory of the previous throw
+        for point in previous_trajectory:
+            pygame.draw.circle(screen, WHITE, (int(point[0]), int(point[1])), 2, 2)
+
+    if feedback_type == "rl":
+        # Draw a circle around the throw point
+        color = GREEN_LAMP if previous_win else RED_LAMP
+        pygame.draw.circle(screen, color, START_POS, FREE_ZONE_RADIUS, 10)
+
+    if feedback_type == "endpos":
+        # Show the final position of the pint
+        if previous_pos is not None:
+            pygame.draw.circle(screen, WHITE, (int(previous_pos[0]), int(previous_pos[1])), pint_radius + 2, 2)
+
+
 
 # Precompute gradient surfaces
 green_gradient = create_gradient_surface(GREEN_TRIANGLE, DARK_GREEN, LIGHT_GREEN, SCORING_RECT.topleft)
@@ -274,6 +315,7 @@ def setup_block(block_number):
             gradual_perturbation = False
             perturbation_force = block.get('sudden_force', 10.0)  # Use the sudden force for sudden perturbation
 
+
 def handle_trial_end():
     """Handle end-of-trial events."""
     global trial_in_block, current_block, running
@@ -292,20 +334,35 @@ def handle_trial_end():
         else:
             setup_block(current_block)
 
+
 # TASK1: Define the experiment blocks
+
+# 10 trials without perturbation
+# 30 trials with gradual perturbation
+# 10 trials without perturbation
+
 block_structure = [
-    #Normal visual feedback
-    {'feedback': None, 'perturbation': False, 'gradual': False, 'num_trials': 10},  # 10 trials without perturbation
-    {'feedback': None, 'perturbation': True, 'gradual': True, 'num_trials': 30, 'initial_force': 0.2, 'sudden_force': 2.0},  # 30 trials with gradual perturbation
-    {'feedback': None, 'perturbation': False, 'gradual': False, 'num_trials': 10},  # 10 trials without perturbation
-    
+    # Normal visual feedback
+    {"feedback": None, "perturbation": False, "gradual": False, "num_trials": 10},
+    {"feedback": None, "perturbation": True, "gradual": True, "num_trials": 30, "initial_force": 0.2, "sudden_force": 2.0},
+    {"feedback": None, "perturbation": False, "gradual": False, "num_trials": 10},
+
     # ADD Trajectory feedback
+    {"feedback": "trajectory", "perturbation": False, "gradual": False, "num_trials": 10},
+    {"feedback": "trajectory", "perturbation": True, "gradual": True, "num_trials": 30, "initial_force": 0.2, "sudden_force": 2.0},
+    {"feedback": "trajectory", "perturbation": False, "gradual": False, "num_trials": 10},
 
     # ADD End position feedback
+    {"feedback": "endpos", "perturbation": False, "gradual": False, "num_trials": 10},
+    {"feedback": "endpos", "perturbation": True, "gradual": True, "num_trials": 30, "initial_force": 0.2, "sudden_force": 2.0},
+    {"feedback": "endpos", "perturbation": False, "gradual": False, "num_trials": 10},
 
     # ADD RL feedback
-
+    {"feedback": "rl", "perturbation": False, "gradual": False, "num_trials": 10},
+    {"feedback": "rl", "perturbation": True, "gradual": True, "num_trials": 30, "initial_force": 0.2, "sudden_force": 2.0},
+    {"feedback": "rl", "perturbation": False, "gradual": False, "num_trials": 10}
 ]
+
 current_block = 1
 setup_block(current_block)
 
@@ -318,6 +375,8 @@ while running:
 
     # Draw playfield with optional masking
     draw_playfield(mask_pint=mask_pint)
+
+    draw_feedback()
 
     # Display score (only for feedbacks where score is not relevant)
     if feedback_type not in ('rl', 'endpos', 'trajectory'):
@@ -345,6 +404,7 @@ while running:
                 feedback_type = 'rl'
                 feedback_mode = True
             elif event.key == pygame.K_0:
+                feedback_type = None
                 feedback_mode = False
             elif event.key == pygame.K_i:  # Press 'i' to toggle info display
                 show_info = not show_info    
