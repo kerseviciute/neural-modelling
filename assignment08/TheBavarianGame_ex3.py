@@ -1,6 +1,8 @@
+import pandas as pd
 import pygame
 import math
 import matplotlib.pyplot as plt
+import datetime
 
 # Initialize Pygame
 pygame.init()
@@ -81,8 +83,14 @@ previous_win = False
 previous_pos = None
 previous_trajectory = []
 
+gradual_perturbation = False
+
 # Font setup
 font = pygame.font.SysFont(None, 36)
+
+trial_counter = 0
+results = []
+
 
 # BUILD FIELD
 def draw_playfield(mask_pint=False):
@@ -133,7 +141,7 @@ def handle_mouse_input():
     global pint_pos, pint_velocity, launched, waiting_for_mouse
     mouse_pos = pygame.mouse.get_pos()
     distance = math.dist(mouse_pos, START_POS)
-    if waiting_for_mouse:    
+    if waiting_for_mouse:
         if distance <= pint_radius:  # Mouse touching the pint
             waiting_for_mouse = False
     elif distance <= FREE_ZONE_RADIUS:
@@ -162,13 +170,15 @@ def apply_friction():
 def update_perturbation():
     """Adjust the perturbation force based on gradual or sudden mode."""
     global perturbation_force, trial_in_block
-    
+
     if gradual_perturbation and perturbation_active:
         # Increment force every 3 trials (or however you want to adjust the frequency)
         if trial_in_block % 3 == 0 and trial_in_block != 0:
             perturbation_force += force_increment  # Increase perturbation force gradually after each set of 3 trials
             print(f"Gradual perturbation force updated to: {perturbation_force}")
     # Sudden perturbation: No updates needed (force remains constant)
+
+
 def apply_perturbation():
     """Apply perturbation to the pint's movement."""
     if perturbation_active:
@@ -181,7 +191,7 @@ def check_stopped():
     if abs(pint_velocity[0]) < 0.1 and abs(pint_velocity[1]) < 0.1 and launched:
         stopped = True
         launched = False
-        
+
 
 def point_in_polygon(point, polygon):
     """Check if a point is inside a polygon."""
@@ -204,31 +214,73 @@ def point_in_polygon(point, polygon):
 
 def calculate_score():
     """Calculate and update the score."""
-    global pint_pos, stopped, end_pos, score, trial_counter, trial_positions, previous_win, previous_pos, previous_trajectory
+    global pint_pos, stopped, end_pos, score, trial_counter, trial_positions, previous_win, previous_pos, \
+        previous_trajectory, feedback_type, perturbation_active, gradual_perturbation, perturbation_force
     last_trajectory.append(pint_pos.copy())
     if stopped:  # Only calculate score once per trial
+        trial_counter += 1
+        trial_score = 0
+
         if point_in_polygon(pint_pos, GREEN_TRIANGLE):
             reference_point = SCORING_RECT.topleft
             distance = math.dist(pint_pos, reference_point)
             max_distance = max(math.dist(p, reference_point) for p in GREEN_TRIANGLE)
-            score += calculate_edge_score(distance, max_distance)
+            trial_score = calculate_edge_score(distance, max_distance)
         elif point_in_polygon(pint_pos, RED_TRIANGLE):
             reference_point = SCORING_RECT.bottomright
             distance = math.dist(pint_pos, reference_point)
             max_distance = max(math.dist(p, reference_point) for p in RED_TRIANGLE)
-            score -= calculate_edge_score(distance, max_distance)
+            trial_score = -calculate_edge_score(distance, max_distance)
         elif not TABLE_RECT.collidepoint(*pint_pos):
-            score -= 50  # Penalty for missing
-            display_message("Too far!")
+            # Penalty for missing
+            trial_score = -50
+            if feedback_type != "rl":
+                display_message("Too far!")
+
+        score += trial_score
 
         previous_win = point_in_polygon(pint_pos, GREEN_TRIANGLE)
         previous_pos = pint_pos.copy()
         previous_trajectory = last_trajectory.copy()
-        
+
         # Append trial position and current block number
         trial_positions.append((pint_pos[0], pint_pos[1], current_block))
+        # Save current trial results
+        record_results(
+            trial_number = trial_counter, score = trial_score, total_score = score,
+            feedback_type = feedback_type, end_position = pint_pos,
+            perturbation_mode = get_perturbation_mode(perturbation_active, gradual_perturbation),
+            perturbation_force = perturbation_force
+        )
         reset_pint()
         handle_trial_end()
+
+
+def get_perturbation_mode(perturbation_active, gradual_perturbation):
+    if not perturbation_active: return "None"
+    if gradual_perturbation: return "Gradual"
+    return "Sudden"
+
+
+def record_results(trial_number, score, total_score, feedback_type, end_position, perturbation_mode, perturbation_force):
+    global results
+
+    print(
+        f"Trial {trial_number}: score {score}, total score {total_score}, "
+        f"feedback type {feedback_type}, end position {end_position}, "
+        f"perturbation mode {perturbation_mode}, perturbation force {perturbation_force}"
+    )
+
+    results.append(pd.DataFrame({
+        "Trial": [trial_number],
+        "Score": [score],
+        "TotalScore": [total_score],
+        "FeedbackType": [feedback_type],
+        "EndPosX": [end_position[0]],
+        "EndPosY": [end_position[1]],
+        "Perturbation": [perturbation_mode],
+        "PerturbationForce": [perturbation_force]
+    }))
 
 
 def calculate_edge_score(distance, max_distance):
@@ -255,16 +307,14 @@ def reset_pint():
     launched = False
     stopped = False
     waiting_for_mouse = True
-    last_trajectory=[]
+    last_trajectory = []
 
 
 #TASK 1: IMPLEMENT FEEDBACK MODES
-
 def draw_feedback():
     """Display feedback based on the feedback type."""
 
     global feedback_type
-    print(feedback_type)
 
     # Reset
     pygame.draw.circle(screen, BLACK, START_POS, FREE_ZONE_RADIUS, 3)
@@ -298,7 +348,7 @@ red_gradient = create_gradient_surface(RED_TRIANGLE, DARK_RED, LIGHT_RED, SCORIN
 def setup_block(block_number):
     """Set up block parameters."""
     global perturbation_active, feedback_mode, feedback_type, perturbation_force, trial_in_block, gradual_perturbation
-    
+
     block = block_structure[block_number - 1]
     feedback_type = block['feedback'] if block['feedback'] else None
     feedback_mode = feedback_type is not None
@@ -314,6 +364,9 @@ def setup_block(block_number):
         else:  # Sudden perturbation
             gradual_perturbation = False
             perturbation_force = block.get('sudden_force', 10.0)  # Use the sudden force for sudden perturbation
+    else:
+        # Reset perturbation force if no perturbation is applied
+        perturbation_force = 0
 
 
 def handle_trial_end():
@@ -360,7 +413,12 @@ block_structure = [
     # ADD RL feedback
     {"feedback": "rl", "perturbation": False, "gradual": False, "num_trials": 10},
     {"feedback": "rl", "perturbation": True, "gradual": True, "num_trials": 30, "initial_force": 0.2, "sudden_force": 2.0},
-    {"feedback": "rl", "perturbation": False, "gradual": False, "num_trials": 10}
+    {"feedback": "rl", "perturbation": False, "gradual": False, "num_trials": 10},
+
+    # Normal visual feedback and sudden perturbation
+    {"feedback": None, "perturbation": False, "gradual": False, "num_trials": 10},
+    {"feedback": None, "perturbation": True, "gradual": False, "num_trials": 30, "sudden_force": 2.0},
+    {"feedback": None, "perturbation": False, "gradual": False, "num_trials": 10}
 ]
 
 current_block = 1
@@ -407,7 +465,7 @@ while running:
                 feedback_type = None
                 feedback_mode = False
             elif event.key == pygame.K_i:  # Press 'i' to toggle info display
-                show_info = not show_info    
+                show_info = not show_info
             elif event.key == pygame.K_SPACE:  # Start the next experimental block
                 current_block += 1
                 if current_block > len(block_structure):
@@ -434,7 +492,7 @@ while running:
         screen.blit(fb_info_text, (10, 60))
         screen.blit(pt_info_text, (10, 90))
         screen.blit(pf_info_text, (10, 120))
-        screen.blit(tib_text, (10, 150))    
+        screen.blit(tib_text, (10, 150))
 
     pygame.display.flip()
     clock.tick(60)
@@ -450,4 +508,15 @@ feedback_blocks = {
     None: [1, 2, 3]  # Normal feedback type
 }
 #use trial_positions
-   
+
+
+def get_file_name(prefix: str = "logs"):
+    dt = datetime.datetime.now()
+    date = str(dt.date())
+    time = str(dt.time()).split(".")[0].replace(":", "-")
+    return prefix + "_" + date.replace("-", "_") + "_" + time.replace("-", "_")
+
+
+results = pd.concat(results)
+results.reset_index(drop = True, inplace = True)
+results.to_csv(f"{get_file_name()}.csv", index = False)
