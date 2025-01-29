@@ -400,17 +400,17 @@ block_structure = [
     {"feedback": None, "perturbation": True, "gradual": True, "num_trials": 30, "initial_force": 0.2, "sudden_force": 2.0},
     {"feedback": None, "perturbation": False, "gradual": False, "num_trials": 10},
 
-    # ADD Trajectory feedback
+    # Trajectory feedback
     {"feedback": "trajectory", "perturbation": False, "gradual": False, "num_trials": 10},
     {"feedback": "trajectory", "perturbation": True, "gradual": True, "num_trials": 30, "initial_force": 0.2, "sudden_force": 2.0},
     {"feedback": "trajectory", "perturbation": False, "gradual": False, "num_trials": 10},
 
-    # ADD End position feedback
+    # End position feedback
     {"feedback": "endpos", "perturbation": False, "gradual": False, "num_trials": 10},
     {"feedback": "endpos", "perturbation": True, "gradual": True, "num_trials": 30, "initial_force": 0.2, "sudden_force": 2.0},
     {"feedback": "endpos", "perturbation": False, "gradual": False, "num_trials": 10},
 
-    # ADD RL feedback
+    # RL feedback
     {"feedback": "rl", "perturbation": False, "gradual": False, "num_trials": 10},
     {"feedback": "rl", "perturbation": True, "gradual": True, "num_trials": 30, "initial_force": 0.2, "sudden_force": 2.0},
     {"feedback": "rl", "perturbation": False, "gradual": False, "num_trials": 10},
