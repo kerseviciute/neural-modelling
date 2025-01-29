@@ -93,11 +93,11 @@ def plot_trial_score(
             color = subject_colors[i]
         )
 
-        means = subject.\
-            groupby("Type").\
-            mean("Score").\
-            reset_index(drop = False)[["Type", "Score", "Trial"]].\
-            rename(columns = {"Score": "Mean"})
+        means = subject. \
+            groupby("Type"). \
+            mean("Score"). \
+            reset_index(drop = False)[["Type", "Score", "Trial"]]. \
+            rename(columns = { "Score": "Mean" })
 
         for _, mean in means.iterrows():
             ax.plot(
@@ -172,9 +172,14 @@ def plot_throw_perturbation(subject):
         ax.fill(dims.red_x, dims.red_y, color = "red", alpha = 0.1)
 
         group_data = subject[subject.Type == feedback].reset_index(drop = True).sort_values(by = "Trial")
-        no_perturb_before = group_data.loc[:10]
-        perturb = group_data.loc[10:40]
+        no_perturb_before = group_data.loc[:9]
+        no_perturb_before = no_perturb_before[no_perturb_before.EndPosY < 800]
+
+        perturb = group_data.loc[10:39]
+        perturb = perturb[perturb.EndPosY < 800]
+
         no_perturb_after = group_data.loc[40:]
+        no_perturb_after = no_perturb_after[no_perturb_after.EndPosY < 800]
 
         scatter_before = ax.scatter(
             no_perturb_before.EndPosX,
@@ -256,18 +261,19 @@ def plot_throw_positions(subject):
 
     axs[0].add_patch(copy.deepcopy(dims.screen))
     axs[1].add_patch(copy.deepcopy(dims.screen))
-    
+
     axs[0].add_patch(copy.deepcopy(dims.table))
     axs[1].add_patch(copy.deepcopy(dims.table))
-    
+
     axs[0].fill(dims.green_x, dims.green_y, color = "green", alpha = 0.1)
     axs[1].fill(dims.green_x, dims.green_y, color = "green", alpha = 0.1)
-    
+
     axs[0].fill(dims.red_x, dims.red_y, color = "red", alpha = 0.1)
     axs[1].fill(dims.red_x, dims.red_y, color = "red", alpha = 0.1)
-    
+
     for i, feedback in enumerate(subject.Type.unique()):
         group_data = subject[subject.Type == feedback]
+        group_data = group_data[group_data.EndPosY < 800]
         plot_ellipse_around_points(
             group_data.EndPosX, group_data.EndPosY,
             ax = axs[0],
@@ -278,7 +284,7 @@ def plot_throw_positions(subject):
             lw = 2,
             label = feedback
         )
-    
+
     for i, feedback in enumerate(subject.Type.unique()):
         group_data = subject[subject.Type == feedback]
         axs[1].scatter(
@@ -288,26 +294,25 @@ def plot_throw_positions(subject):
             s = 5,
             label = feedback
         )
-    
+
     axs[0].set_xlim(min_pos_x, max_pos_x)
     axs[0].set_ylim(min_pos_y, max_pos_y)
-    
+
     axs[1].set_xlim(min_pos_x, max_pos_x)
     axs[1].set_ylim(min_pos_y, max_pos_y)
-    
+
     axs[0].invert_yaxis()
     axs[1].invert_yaxis()
-    
+
     axs[1].legend(loc = "center left", bbox_to_anchor = (1, 0.5))
-    
+
     axs[0].set_xlabel("X")
     axs[0].set_ylabel("Y")
-    
+
     axs[1].set_xlabel("X")
     axs[1].set_ylabel("Y")
-    
-    axs[0].set_title("Distribution around mean throw position")
-    axs[1].set_title("All throw positions")
-    
-    fig.tight_layout()
 
+    axs[0].set_title("Distribution around mean final position")
+    axs[1].set_title("Final pint position")
+
+    fig.tight_layout()
