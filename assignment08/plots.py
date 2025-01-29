@@ -115,7 +115,7 @@ def define_experiment():
     experiment = pd.DataFrame({
         "Trial": [1, 51, 101, 151, 201],
         "TrialEnd": np.array([51, 101, 151, 201, 251]) - 1,
-        "Type": ["NormalGradual", "Trajectory", "EndPos", "RL", "NormalSudden"]
+        "Type": ["Normal Gradual", "Trajectory", "EndPos", "RL", "Normal Sudden"]
     })
 
     n_attempts = 250
