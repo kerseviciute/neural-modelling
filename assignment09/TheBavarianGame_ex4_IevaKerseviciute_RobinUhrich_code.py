@@ -33,7 +33,7 @@ GREEN_LAMP = (0, 255, 0)
 RED_LAMP = (255, 0, 0)
 
 # Game settings
-BASE_FRICTION = 0.99
+BASE_FRICTION = 0.96 # max 0.99
 ZONE_WIDTH = int(TABLE_WIDTH * 0.95)
 ZONE_HEIGHT = 150
 
@@ -84,6 +84,9 @@ previous_pos = None
 previous_trajectory = []
 
 gradual_perturbation = False
+
+# Parameter to control by how much to decrease the friction while drinking beer
+friction_decrease = 0.01
 
 # Font setup
 font = pygame.font.SysFont(None, 36)
@@ -162,7 +165,7 @@ def calculate_velocity(start_pos, mouse_pos):
 
 
 def apply_friction():
-    global pint_velocity
+    global pint_velocity, friction
     pint_velocity[0] *= friction
     pint_velocity[1] *= friction
 
@@ -292,11 +295,11 @@ def calculate_edge_score(distance, max_distance):
     return int(100 - 90 * normalized_distance)  # Scale between 100 and 10
 
 
-def display_message(text):
+def display_message(text, length = 1000):
     message = font.render(text, True, BLACK)
     screen.blit(message, (SCREEN_WIDTH // 2 - message.get_width() // 2, SCREEN_HEIGHT // 2 - message.get_height() // 2))
     pygame.display.flip()
-    pygame.time.delay(1000)
+    pygame.time.delay(length)
 
 
 def reset_pint():
@@ -348,10 +351,18 @@ red_gradient = create_gradient_surface(RED_TRIANGLE, DARK_RED, LIGHT_RED, SCORIN
 def setup_block(block_number):
     """Set up block parameters."""
     global perturbation_active, feedback_mode, feedback_type, perturbation_force, trial_in_block, gradual_perturbation
+    global friction, friction_decrease
 
     block = block_structure[block_number - 1]
     feedback_type = block['feedback'] if block['feedback'] else None
     feedback_mode = feedback_type is not None
+
+    drink_beer = block.get("drink_beer", False)
+    if drink_beer:
+        display_message("Drinking beer!", length = 2000)
+
+        if friction + friction_decrease < 1:
+            friction += friction_decrease
 
     perturbation_active = block['perturbation']
     trial_in_block = 0
@@ -395,30 +406,30 @@ def handle_trial_end():
 # 10 trials without perturbation
 
 block_structure = [
-    # Normal visual feedback
-    {"feedback": None, "perturbation": False, "gradual": False, "num_trials": 10},
-    {"feedback": None, "perturbation": True, "gradual": True, "num_trials": 30, "initial_force": 0.2, "sudden_force": 2.0},
-    {"feedback": None, "perturbation": False, "gradual": False, "num_trials": 10},
-
-    # Trajectory feedback
-    {"feedback": "trajectory", "perturbation": False, "gradual": False, "num_trials": 10},
-    {"feedback": "trajectory", "perturbation": True, "gradual": True, "num_trials": 30, "initial_force": 0.2, "sudden_force": 2.0},
-    {"feedback": "trajectory", "perturbation": False, "gradual": False, "num_trials": 10},
-
-    # End position feedback
-    {"feedback": "endpos", "perturbation": False, "gradual": False, "num_trials": 10},
-    {"feedback": "endpos", "perturbation": True, "gradual": True, "num_trials": 30, "initial_force": 0.2, "sudden_force": 2.0},
+    # 1
+    {"feedback": "endpos", "perturbation": False, "gradual": False, "num_trials": 1, "drink_beer": False},
+    {"feedback": "endpos", "perturbation": False, "gradual": False, "num_trials": 1, "drink_beer": True},
+    {"feedback": "endpos", "perturbation": False, "gradual": False, "num_trials": 1, "drink_beer": True},
+    {"feedback": "endpos", "perturbation": False, "gradual": False, "num_trials": 1, "drink_beer": False},
+    {"feedback": "endpos", "perturbation": False, "gradual": False, "num_trials": 1, "drink_beer": True},
+    {"feedback": "endpos", "perturbation": False, "gradual": False, "num_trials": 1, "drink_beer": True},
+    {"feedback": "endpos", "perturbation": True, "gradual": False, "num_trials": 30, "sudden_force": 2.0},
     {"feedback": "endpos", "perturbation": False, "gradual": False, "num_trials": 10},
 
-    # RL feedback
-    {"feedback": "rl", "perturbation": False, "gradual": False, "num_trials": 10},
-    {"feedback": "rl", "perturbation": True, "gradual": True, "num_trials": 30, "initial_force": 0.2, "sudden_force": 2.0},
-    {"feedback": "rl", "perturbation": False, "gradual": False, "num_trials": 10},
+    # 2
+    {"feedback": "endpos", "perturbation": False, "gradual": False, "num_trials": 10, "drink_beer": True},
+    {"feedback": "endpos", "perturbation": True, "gradual": False, "num_trials": 30, "sudden_force": 2.0},
+    {"feedback": "endpos", "perturbation": False, "gradual": False, "num_trials": 10},
 
-    # Normal visual feedback and sudden perturbation
-    {"feedback": None, "perturbation": False, "gradual": False, "num_trials": 10},
-    {"feedback": None, "perturbation": True, "gradual": False, "num_trials": 30, "sudden_force": 2.0},
-    {"feedback": None, "perturbation": False, "gradual": False, "num_trials": 10}
+    # 3
+    {"feedback": "endpos", "perturbation": False, "gradual": False, "num_trials": 10, "drink_beer": True},
+    {"feedback": "endpos", "perturbation": True, "gradual": False, "num_trials": 30, "sudden_force": 2.0},
+    {"feedback": "endpos", "perturbation": False, "gradual": False, "num_trials": 10},
+
+    # 4
+    {"feedback": "endpos", "perturbation": False, "gradual": False, "num_trials": 10, "drink_beer": True},
+    {"feedback": "endpos", "perturbation": True, "gradual": False, "num_trials": 30, "initial_force": 0.2, "sudden_force": 2.0},
+    {"feedback": "endpos", "perturbation": False, "gradual": False, "num_trials": 10},
 ]
 
 current_block = 1
@@ -488,11 +499,13 @@ while running:
         fb_info_text = font.render(f"Feedback: {feedback_type}", True, BLACK)
         pt_info_text = font.render(f"Perturbation:{perturbation_active}", True, BLACK)
         pf_info_text = font.render(f"Perturbation_force:{perturbation_force}", True, BLACK)
+        fr_info_text = font.render(f"Friction:{friction}", True, BLACK)
         tib_text = font.render(f"Trial_in_block: {trial_in_block}", True, BLACK)
         screen.blit(fb_info_text, (10, 60))
         screen.blit(pt_info_text, (10, 90))
         screen.blit(pf_info_text, (10, 120))
         screen.blit(tib_text, (10, 150))
+        screen.blit(fr_info_text, (10, 180))
 
     pygame.display.flip()
     clock.tick(60)
