@@ -484,16 +484,16 @@ def handle_trial_end():
 small_noise_mean = 0
 small_noise_std = 1
 
-medium_noise_mean = 0.5
+medium_noise_mean = 1.5
 medium_noise_std = 2
 
-large_noise_mean = 1.5
-large_noise_std = 2
+large_noise_mean = 2.5
+large_noise_std = 3
 
 sudden_force = 2
-n_trials_no_perturbation = 1
-n_trials_perturbation = 3
-feedback_setting = None
+n_trials_no_perturbation = 10
+n_trials_perturbation = 30
+feedback_setting = "endpos"
 
 block_structure = [
     # 1
