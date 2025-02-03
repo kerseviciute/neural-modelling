@@ -38,6 +38,9 @@ RED_LAMP = (255, 0, 0)
 friction_decrease = 0.005
 BASE_FRICTION = 0.99 - (3 * friction_decrease)
 
+beer_alpha = 1
+beer_alpha_decrease = 0.1
+
 ZONE_WIDTH = int(TABLE_WIDTH * 0.95)
 ZONE_HEIGHT = 150
 
@@ -122,7 +125,9 @@ def draw_playfield(mask_pint=False):
 
     # Optionally mask the beer pint
     if not mask_pint:
-        pygame.draw.circle(screen, YELLOW, (int(pint_pos[0]), int(pint_pos[1])), pint_radius)
+        global beer_alpha
+        yellow = pygame.Color(int(255 * beer_alpha), int(255 * beer_alpha), 0)
+        pygame.draw.circle(screen, yellow, (int(pint_pos[0]), int(pint_pos[1])), pint_radius)
         pygame.draw.circle(screen, WHITE, (int(pint_pos[0]), int(pint_pos[1])), pint_radius + 2, 2)
 
 
@@ -406,6 +411,7 @@ def setup_block(block_number):
     global perturbation_active, feedback_mode, feedback_type, perturbation_force, trial_in_block, gradual_perturbation
     global friction, friction_decrease
     global noise_active, noise_mean, noise_std, noise_instance
+    global beer_alpha, beer_alpha_decrease
 
     block = block_structure[block_number - 1]
     feedback_type = block['feedback'] if block['feedback'] else None
@@ -414,6 +420,7 @@ def setup_block(block_number):
     drink_beer = block.get("drink_beer", False)
     if drink_beer:
         display_message("Drinking beer!", length = 2000)
+        beer_alpha -= beer_alpha_decrease
         if friction + friction_decrease < 1:
             friction += friction_decrease
 
