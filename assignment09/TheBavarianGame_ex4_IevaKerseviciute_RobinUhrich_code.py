@@ -3,6 +3,7 @@ import pygame
 import math
 import matplotlib.pyplot as plt
 import datetime
+import numpy as np
 
 # Initialize Pygame
 pygame.init()
@@ -33,7 +34,10 @@ GREEN_LAMP = (0, 255, 0)
 RED_LAMP = (255, 0, 0)
 
 # Game settings
-BASE_FRICTION = 0.96 # max 0.99
+# Parameter to control by how much to decrease the friction while drinking beer
+friction_decrease = 0.005
+BASE_FRICTION = 0.995 - (3 * friction_decrease)
+
 ZONE_WIDTH = int(TABLE_WIDTH * 0.95)
 ZONE_HEIGHT = 150
 
@@ -85,15 +89,16 @@ previous_trajectory = []
 
 gradual_perturbation = False
 
-# Parameter to control by how much to decrease the friction while drinking beer
-friction_decrease = 0.01
-
 # Font setup
 font = pygame.font.SysFont(None, 36)
 
 trial_counter = 0
 results = []
 
+noise_mean = 0
+noise_std = 0
+noise_active = False
+noise_instance = 0
 
 # BUILD FIELD
 def draw_playfield(mask_pint=False):
@@ -153,6 +158,7 @@ def handle_mouse_input():
         pint_velocity = calculate_velocity(pint_pos, mouse_pos)
         if perturbation_active:
             apply_perturbation()
+        apply_noise()
         launched = True
 
 
@@ -168,6 +174,11 @@ def apply_friction():
     global pint_velocity, friction
     pint_velocity[0] *= friction
     pint_velocity[1] *= friction
+
+
+def sample_random_noise():
+    global noise_mean, noise_std
+    return np.random.normal(noise_mean, noise_std)
 
 
 def update_perturbation():
@@ -186,6 +197,10 @@ def apply_perturbation():
     """Apply perturbation to the pint's movement."""
     if perturbation_active:
         pint_velocity[0] += perturbation_force  # Add rightward force
+
+
+def apply_noise():
+    pint_velocity[0] += noise_instance
 
 
 # CHECK & SCORE
@@ -253,7 +268,11 @@ def calculate_score():
             trial_number = trial_counter, score = trial_score, total_score = score,
             feedback_type = feedback_type, end_position = pint_pos,
             perturbation_mode = get_perturbation_mode(perturbation_active, gradual_perturbation),
-            perturbation_force = perturbation_force
+            perturbation_force = perturbation_force,
+            noise_mean = noise_mean,
+            noise_std = noise_std,
+            noise_instance = noise_instance,
+            friction = friction
         )
         reset_pint()
         handle_trial_end()
@@ -265,13 +284,19 @@ def get_perturbation_mode(perturbation_active, gradual_perturbation):
     return "Sudden"
 
 
-def record_results(trial_number, score, total_score, feedback_type, end_position, perturbation_mode, perturbation_force):
+def record_results(
+        trial_number, score, total_score, feedback_type,
+        end_position, perturbation_mode, perturbation_force,
+        noise_mean, noise_std, noise_instance, friction
+):
     global results
 
     print(
         f"Trial {trial_number}: score {score}, total score {total_score}, "
         f"feedback type {feedback_type}, end position {end_position}, "
-        f"perturbation mode {perturbation_mode}, perturbation force {perturbation_force}"
+        f"perturbation mode {perturbation_mode}, perturbation force {perturbation_force}, "
+        f"noise mean {noise_mean}, noise std {noise_std}, noise instance {noise_instance}, "
+        f"friction {friction}"
     )
 
     results.append(pd.DataFrame({
@@ -282,7 +307,11 @@ def record_results(trial_number, score, total_score, feedback_type, end_position
         "EndPosX": [end_position[0]],
         "EndPosY": [end_position[1]],
         "Perturbation": [perturbation_mode],
-        "PerturbationForce": [perturbation_force]
+        "PerturbationForce": [perturbation_force],
+        "NoiseMean": [noise_mean],
+        "NoiseStd": [noise_std],
+        "NoiseInstance": [noise_instance],
+        "Friction": [friction]
     }))
 
 
@@ -352,6 +381,7 @@ def setup_block(block_number):
     """Set up block parameters."""
     global perturbation_active, feedback_mode, feedback_type, perturbation_force, trial_in_block, gradual_perturbation
     global friction, friction_decrease
+    global noise_active, noise_mean, noise_std, noise_instance
 
     block = block_structure[block_number - 1]
     feedback_type = block['feedback'] if block['feedback'] else None
@@ -360,9 +390,18 @@ def setup_block(block_number):
     drink_beer = block.get("drink_beer", False)
     if drink_beer:
         display_message("Drinking beer!", length = 2000)
-
         if friction + friction_decrease < 1:
             friction += friction_decrease
+
+    noise_active = block.get("noise_active", False)
+    noise_mean = block.get("noise_mean", 0)
+    noise_std = block.get("noise_std", 0)
+
+    # Generate new perturbation noise
+    if noise_active:
+        noise_instance = sample_random_noise()
+    else:
+        noise_instance = 0
 
     perturbation_active = block['perturbation']
     trial_in_block = 0
@@ -382,13 +421,19 @@ def setup_block(block_number):
 
 def handle_trial_end():
     """Handle end-of-trial events."""
-    global trial_in_block, current_block, running
+    global trial_in_block, current_block, running, noise_instance
 
     trial_in_block += 1
 
     # Update perturbation force for gradual perturbation
     if perturbation_active and gradual_perturbation:
         update_perturbation()
+
+    # Generate new perturbation noise
+    if noise_active:
+        noise_instance = sample_random_noise()
+    else:
+        noise_instance = 0
 
     # Transition to the next block if trials in the current block are complete
     if trial_in_block >= block_structure[current_block - 1]['num_trials']:
@@ -405,31 +450,100 @@ def handle_trial_end():
 # 30 trials with gradual perturbation
 # 10 trials without perturbation
 
+small_noise_mean = 1
+small_noise_std = 1
+
+medium_noise_mean = 2
+medium_noise_std = 2
+
+large_noise_mean = 3
+large_noise_std = 3
+
+sudden_force = 2
+n_trials_no_perturbation = 1
+n_trials_perturbation = 3
+feedback_setting = None
+
 block_structure = [
     # 1
-    {"feedback": "endpos", "perturbation": False, "gradual": False, "num_trials": 1, "drink_beer": False},
-    {"feedback": "endpos", "perturbation": False, "gradual": False, "num_trials": 1, "drink_beer": True},
-    {"feedback": "endpos", "perturbation": False, "gradual": False, "num_trials": 1, "drink_beer": True},
-    {"feedback": "endpos", "perturbation": False, "gradual": False, "num_trials": 1, "drink_beer": False},
-    {"feedback": "endpos", "perturbation": False, "gradual": False, "num_trials": 1, "drink_beer": True},
-    {"feedback": "endpos", "perturbation": False, "gradual": False, "num_trials": 1, "drink_beer": True},
-    {"feedback": "endpos", "perturbation": True, "gradual": False, "num_trials": 30, "sudden_force": 2.0},
-    {"feedback": "endpos", "perturbation": False, "gradual": False, "num_trials": 10},
+    {
+        "feedback": feedback_setting, "num_trials": n_trials_no_perturbation,
+        "perturbation": False,
+        "drink_beer": False,
+        "noise_active": False,
+    },
+    {
+        "feedback": feedback_setting, "num_trials": n_trials_perturbation,
+        "perturbation": True, "gradual": False, "sudden_force": sudden_force,
+        "drink_beer": False,
+        "noise_active": False
+    },
+    {
+        "feedback": feedback_setting, "num_trials": n_trials_no_perturbation,
+        "perturbation": False,
+        "drink_beer": False,
+        "noise_active": False
+    },
 
     # 2
-    {"feedback": "endpos", "perturbation": False, "gradual": False, "num_trials": 10, "drink_beer": True},
-    {"feedback": "endpos", "perturbation": True, "gradual": False, "num_trials": 30, "sudden_force": 2.0},
-    {"feedback": "endpos", "perturbation": False, "gradual": False, "num_trials": 10},
+    {
+        "feedback": feedback_setting, "num_trials": n_trials_no_perturbation,
+        "perturbation": False,
+        "drink_beer": True,
+        "noise_active": True, "noise_mean": small_noise_mean, "noise_std": small_noise_std
+    },
+    {
+        "feedback": feedback_setting, "num_trials": n_trials_perturbation,
+        "perturbation": True, "gradual": False, "sudden_force": sudden_force,
+        "drink_beer": False,
+        "noise_active": True, "noise_mean": small_noise_mean, "noise_std": small_noise_std
+    },
+    {
+        "feedback": feedback_setting, "num_trials": n_trials_no_perturbation,
+        "perturbation": False,
+        "drink_beer": False,
+        "noise_active": True, "noise_mean": small_noise_mean, "noise_std": small_noise_std
+    },
 
     # 3
-    {"feedback": "endpos", "perturbation": False, "gradual": False, "num_trials": 10, "drink_beer": True},
-    {"feedback": "endpos", "perturbation": True, "gradual": False, "num_trials": 30, "sudden_force": 2.0},
-    {"feedback": "endpos", "perturbation": False, "gradual": False, "num_trials": 10},
+    {
+        "feedback": feedback_setting, "num_trials": n_trials_no_perturbation,
+        "perturbation": False,
+        "drink_beer": True,
+        "noise_active": True, "noise_mean": medium_noise_mean, "noise_std": medium_noise_std
+    },
+    {
+        "feedback": feedback_setting, "num_trials": n_trials_perturbation,
+        "perturbation": True, "gradual": False, "sudden_force": sudden_force,
+        "drink_beer": False,
+        "noise_active": True, "noise_mean": medium_noise_mean, "noise_std": medium_noise_std
+    },
+    {
+        "feedback": feedback_setting, "num_trials": n_trials_no_perturbation,
+        "perturbation": False,
+        "drink_beer": False,
+        "noise_active": True, "noise_mean": medium_noise_mean, "noise_std": medium_noise_std
+    },
 
     # 4
-    {"feedback": "endpos", "perturbation": False, "gradual": False, "num_trials": 10, "drink_beer": True},
-    {"feedback": "endpos", "perturbation": True, "gradual": False, "num_trials": 30, "initial_force": 0.2, "sudden_force": 2.0},
-    {"feedback": "endpos", "perturbation": False, "gradual": False, "num_trials": 10},
+    {
+        "feedback": feedback_setting, "num_trials": n_trials_no_perturbation,
+        "perturbation": False,
+        "drink_beer": True,
+        "noise_active": True, "noise_mean": large_noise_mean, "noise_std": large_noise_std
+    },
+    {
+        "feedback": feedback_setting, "num_trials": n_trials_perturbation,
+        "perturbation": True, "gradual": False, "sudden_force": sudden_force,
+        "drink_beer": False,
+        "noise_active": True, "noise_mean": large_noise_mean, "noise_std": large_noise_std
+    },
+    {
+        "feedback": feedback_setting, "num_trials": n_trials_no_perturbation,
+        "perturbation": False,
+        "drink_beer": False,
+        "noise_active": True, "noise_mean": large_noise_mean, "noise_std": large_noise_std
+    }
 ]
 
 current_block = 1
@@ -439,7 +553,7 @@ setup_block(current_block)
 clock = pygame.time.Clock()
 running = True
 while running:
-# Determine if the beer pint should be masked
+    # Determine if the beer pint should be masked
     mask_pint = launched and feedback_mode and feedback_type in ('trajectory', 'rl', 'endpos')
 
     # Draw playfield with optional masking
@@ -501,11 +615,13 @@ while running:
         pf_info_text = font.render(f"Perturbation_force:{perturbation_force}", True, BLACK)
         fr_info_text = font.render(f"Friction:{friction}", True, BLACK)
         tib_text = font.render(f"Trial_in_block: {trial_in_block}", True, BLACK)
+        noise_text = font.render(f"Noise mean: {noise_mean}, noise std: {noise_std}, noise inst: {noise_instance}", True, BLACK)
         screen.blit(fb_info_text, (10, 60))
         screen.blit(pt_info_text, (10, 90))
         screen.blit(pf_info_text, (10, 120))
         screen.blit(tib_text, (10, 150))
         screen.blit(fr_info_text, (10, 180))
+        screen.blit(noise_text, (10, 210))
 
     pygame.display.flip()
     clock.tick(60)
