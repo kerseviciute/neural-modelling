@@ -36,7 +36,7 @@ RED_LAMP = (255, 0, 0)
 # Game settings
 # Parameter to control by how much to decrease the friction while drinking beer
 friction_decrease = 0.005
-BASE_FRICTION = 0.995 - (3 * friction_decrease)
+BASE_FRICTION = 0.99 - (3 * friction_decrease)
 
 ZONE_WIDTH = int(TABLE_WIDTH * 0.95)
 ZONE_HEIGHT = 150
@@ -100,6 +100,10 @@ noise_std = 0
 noise_active = False
 noise_instance = 0
 
+ideal_velocity = [0, 0]
+ideal_trajectory = []
+ideal_pos = list(START_POS)
+
 # BUILD FIELD
 def draw_playfield(mask_pint=False):
     """Draw the game playfield."""
@@ -147,6 +151,8 @@ def interpolate_color(start_color, end_color, factor):
 def handle_mouse_input():
     """Handle mouse interactions with the pint."""
     global pint_pos, pint_velocity, launched, waiting_for_mouse
+    global ideal_velocity, ideal_pos
+
     mouse_pos = pygame.mouse.get_pos()
     distance = math.dist(mouse_pos, START_POS)
     if waiting_for_mouse:
@@ -154,8 +160,10 @@ def handle_mouse_input():
             waiting_for_mouse = False
     elif distance <= FREE_ZONE_RADIUS:
         pint_pos[0], pint_pos[1] = mouse_pos
+        ideal_pos[0], ideal_pos[1] = mouse_pos
     else:
         pint_velocity = calculate_velocity(pint_pos, mouse_pos)
+        ideal_velocity = pint_velocity.copy()
         if perturbation_active:
             apply_perturbation()
         apply_noise()
@@ -171,9 +179,12 @@ def calculate_velocity(start_pos, mouse_pos):
 
 
 def apply_friction():
-    global pint_velocity, friction
+    global pint_velocity, ideal_velocity, friction
     pint_velocity[0] *= friction
     pint_velocity[1] *= friction
+
+    ideal_velocity[0] *= friction
+    ideal_velocity[1] *= friction
 
 
 def sample_random_noise():
@@ -195,11 +206,13 @@ def update_perturbation():
 
 def apply_perturbation():
     """Apply perturbation to the pint's movement."""
+    global pint_velocity, perturbation_force
     if perturbation_active:
         pint_velocity[0] += perturbation_force  # Add rightward force
 
 
 def apply_noise():
+    global pint_velocity, noise_instance
     pint_velocity[0] += noise_instance
 
 
@@ -234,7 +247,12 @@ def calculate_score():
     """Calculate and update the score."""
     global pint_pos, stopped, end_pos, score, trial_counter, trial_positions, previous_win, previous_pos, \
         previous_trajectory, feedback_type, perturbation_active, gradual_perturbation, perturbation_force
+
+    global ideal_trajectory, ideal_pos
+
     last_trajectory.append(pint_pos.copy())
+    ideal_trajectory.append(ideal_pos.copy())
+
     if stopped:  # Only calculate score once per trial
         trial_counter += 1
         trial_score = 0
@@ -334,8 +352,14 @@ def display_message(text, length = 1000):
 def reset_pint():
     """Reset the pint to the starting position."""
     global pint_pos, end_pos, last_trajectory, pint_velocity, launched, stopped, waiting_for_mouse, trajectory
+    global ideal_velocity, ideal_pos, ideal_trajectory
     pint_pos[:] = START_POS
     pint_velocity[:] = [0, 0]
+
+    ideal_pos[:] = START_POS
+    ideal_velocity[:] = [0, 0]
+    ideal_trajectory = []
+
     launched = False
     stopped = False
     waiting_for_mouse = True
@@ -450,14 +474,14 @@ def handle_trial_end():
 # 30 trials with gradual perturbation
 # 10 trials without perturbation
 
-small_noise_mean = 1
+small_noise_mean = 0
 small_noise_std = 1
 
-medium_noise_mean = 2
+medium_noise_mean = 0.5
 medium_noise_std = 2
 
-large_noise_mean = 3
-large_noise_std = 3
+large_noise_mean = 1.5
+large_noise_std = 2
 
 sudden_force = 2
 n_trials_no_perturbation = 1
@@ -602,6 +626,10 @@ while running:
     else:
         pint_pos[0] += pint_velocity[0]
         pint_pos[1] += pint_velocity[1]
+
+        ideal_pos[0] += ideal_velocity[0]
+        ideal_pos[1] += ideal_velocity[1]
+
         apply_friction()
         check_stopped()
         calculate_score()
@@ -610,6 +638,10 @@ while running:
     # draw_feedback()
 
     if show_info:
+        # Idealized trajectory with no noise or perturbations (sanity check)
+        for point in ideal_trajectory:
+            pygame.draw.circle(screen, WHITE, (int(point[0]), int(point[1])), 2, 2)
+
         fb_info_text = font.render(f"Feedback: {feedback_type}", True, BLACK)
         pt_info_text = font.render(f"Perturbation:{perturbation_active}", True, BLACK)
         pf_info_text = font.render(f"Perturbation_force:{perturbation_force}", True, BLACK)
