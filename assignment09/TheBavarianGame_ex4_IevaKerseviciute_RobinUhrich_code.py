@@ -35,7 +35,7 @@ RED_LAMP = (255, 0, 0)
 
 # Game settings
 # Parameter to control by how much to decrease the friction while drinking beer
-friction_decrease = 0.005
+friction_decrease = 0.003   
 BASE_FRICTION = 0.99 - (3 * friction_decrease)
 
 beer_alpha = 1
@@ -673,7 +673,7 @@ feedback_blocks = {
     'trajectory': [4, 5, 6],
     'endpos': [7, 8, 9],
     'rl': [10, 11, 12],
-    None: [1, 2, 3]  # Normal feedback type
+    None: [1, 2, 3]  # Normal feedback      
 }
 #use trial_positions
 
