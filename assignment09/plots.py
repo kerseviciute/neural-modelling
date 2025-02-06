@@ -58,6 +58,24 @@ def plot_running_score(
     ax.set_title("Running score")
 
 
+def plot_experiment_layout(experiment, ax):
+    colors, unique_periods = get_experiment_colors(experiment)
+    for i, change in experiment.iterrows():
+        label = change.Type if change.Type in unique_periods else ""
+        unique_periods = unique_periods[unique_periods != change.Type]
+
+        start = change.Trial
+        end = change.TrialEnd
+
+        ax.axvspan(
+            start, end,
+            alpha = 0.2,
+            label = label,
+            color = colors.get(change.Type)
+        )
+    return ax
+
+
 def plot_trial_score(
         experiment,
         subjects,
